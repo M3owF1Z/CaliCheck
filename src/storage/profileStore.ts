@@ -91,4 +91,41 @@ export async function deleteProfile(id: string): Promise<void> {
   }
 }
 
+/**
+ * Subscribes to live changes (insert/update/delete) on the shared profiles
+ * table, so that edits made by other people on other devices show up
+ * automatically without a manual page refresh. No-op when Supabase isn't
+ * configured. Returns an unsubscribe function.
+ */
+export function subscribeToRemoteChanges(
+  onUpsert: (profile: Profile) => void,
+  onDelete?: (id: string) => void,
+): () => void {
+  if (!isSupabaseConfigured || !supabase) {
+    return () => {}
+  }
+  const client = supabase
+
+  const channel = client
+    .channel('profiles-realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: PROFILES_TABLE },
+      (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const oldRow = payload.old as { id?: string } | null
+          if (oldRow?.id) onDelete?.(oldRow.id)
+          return
+        }
+        const row = payload.new as { id: string; data: Profile } | null
+        if (row?.data) onUpsert(row.data)
+      },
+    )
+    .subscribe()
+
+  return () => {
+    client.removeChannel(channel)
+  }
+}
+
 export { isSupabaseConfigured }
