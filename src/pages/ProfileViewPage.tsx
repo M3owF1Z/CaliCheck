@@ -4,13 +4,15 @@ import ExerciseItem from '../components/ExerciseItem'
 import SkillItem from '../components/SkillItem'
 import AddExerciseModal from '../components/AddExerciseModal'
 import EditProfileModal from '../components/EditProfileModal'
+import EditEntryModal from '../components/EditEntryModal'
 import { useProfiles } from '../hooks/useProfiles'
 import { BASIC_CATALOG, SKILL_CATALOG } from '../data/catalog'
 import { defaultMeasurementFor, makeEntryId } from '../data/defaults'
-import type { CatalogItem, ExerciseEntry, Measurement, SkillEntry } from '../types'
+import type { CatalogItem, ExerciseEntry, Measurement, MeasurementType, SkillEntry } from '../types'
 
 const MAX_ACTIVE_SKILLS = 3
 type Segment = 'basic' | 'skills'
+type EditTarget = { type: 'exercise' | 'skill'; id: string } | null
 
 export default function ProfileViewPage() {
   const { id } = useParams<{ id: string }>()
@@ -21,6 +23,7 @@ export default function ProfileViewPage() {
   const [showAddExercise, setShowAddExercise] = useState(false)
   const [showAddSkill, setShowAddSkill] = useState(false)
   const [showEditProfile, setShowEditProfile] = useState(false)
+  const [editTarget, setEditTarget] = useState<EditTarget>(null)
 
   const profile = useMemo(() => profiles.find((p) => p.id === id), [profiles, id])
   const isEditable = profile ? profile.id === myProfileId : false
@@ -56,6 +59,18 @@ export default function ProfileViewPage() {
     setShowAddExercise(false)
   }
 
+  const handleAddCustomExercise = (input: { name: string; icon: string; measurementType: MeasurementType }) => {
+    const entry: ExerciseEntry = {
+      id: makeEntryId(),
+      key: `custom_${makeEntryId()}`,
+      name: input.name,
+      icon: input.icon,
+      measurement: defaultMeasurementFor(input.measurementType),
+    }
+    updateExercises([...profile.exercises, entry])
+    setShowAddExercise(false)
+  }
+
   const handleAddSkill = (item: CatalogItem) => {
     if (profile.skills.length >= MAX_ACTIVE_SKILLS) return
     const entry: SkillEntry = {
@@ -70,11 +85,29 @@ export default function ProfileViewPage() {
     setShowAddSkill(false)
   }
 
+  const handleAddCustomSkill = (input: { name: string; icon: string; measurementType: MeasurementType }) => {
+    if (profile.skills.length >= MAX_ACTIVE_SKILLS) return
+    const entry: SkillEntry = {
+      id: makeEntryId(),
+      key: `custom_${makeEntryId()}`,
+      name: input.name,
+      icon: input.icon,
+      measurement: defaultMeasurementFor(input.measurementType),
+      variation: '',
+    }
+    updateSkills([...profile.skills, entry])
+    setShowAddSkill(false)
+  }
+
   const handleDeleteProfile = async () => {
     if (!confirm('Na pewno usunąć ten profil? Tej operacji nie można cofnąć.')) return
     await removeProfile(profile.id)
     navigate('/')
   }
+
+  const editingExercise =
+    editTarget?.type === 'exercise' ? profile.exercises.find((e) => e.id === editTarget.id) : undefined
+  const editingSkill = editTarget?.type === 'skill' ? profile.skills.find((s) => s.id === editTarget.id) : undefined
 
   return (
     <div className="container">
@@ -144,6 +177,7 @@ export default function ProfileViewPage() {
                       profile.exercises.map((e) => (e.id === ex.id ? { ...e, measurement: m } : e)),
                     )
                   }
+                  onEdit={() => setEditTarget({ type: 'exercise', id: ex.id })}
                   onRemove={() => updateExercises(profile.exercises.filter((e) => e.id !== ex.id))}
                 />
               ))}
@@ -193,6 +227,7 @@ export default function ProfileViewPage() {
                   onChangeVariation={(variation: string) =>
                     updateSkills(profile.skills.map((s) => (s.id === sk.id ? { ...s, variation } : s)))
                   }
+                  onEdit={() => setEditTarget({ type: 'skill', id: sk.id })}
                   onRemove={() => updateSkills(profile.skills.filter((s) => s.id !== sk.id))}
                 />
               ))}
@@ -207,6 +242,7 @@ export default function ProfileViewPage() {
           catalog={BASIC_CATALOG}
           existingKeys={profile.exercises.map((e) => e.key)}
           onPick={handleAddExercise}
+          onAddCustom={handleAddCustomExercise}
           onClose={() => setShowAddExercise(false)}
         />
       )}
@@ -222,6 +258,7 @@ export default function ProfileViewPage() {
               : undefined
           }
           onPick={handleAddSkill}
+          onAddCustom={handleAddCustomSkill}
           onClose={() => setShowAddSkill(false)}
         />
       )}
@@ -236,6 +273,34 @@ export default function ProfileViewPage() {
           onSave={(data) => {
             updateProfile(profile.id, data)
             setShowEditProfile(false)
+          }}
+        />
+      )}
+
+      {editingExercise && (
+        <EditEntryModal
+          title="Edytuj ćwiczenie"
+          initialName={editingExercise.name}
+          initialIcon={editingExercise.icon}
+          onClose={() => setEditTarget(null)}
+          onSave={({ name, icon }) => {
+            updateExercises(
+              profile.exercises.map((e) => (e.id === editingExercise.id ? { ...e, name, icon } : e)),
+            )
+            setEditTarget(null)
+          }}
+        />
+      )}
+
+      {editingSkill && (
+        <EditEntryModal
+          title="Edytuj skill"
+          initialName={editingSkill.name}
+          initialIcon={editingSkill.icon}
+          onClose={() => setEditTarget(null)}
+          onSave={({ name, icon }) => {
+            updateSkills(profile.skills.map((s) => (s.id === editingSkill.id ? { ...s, name, icon } : s)))
+            setEditTarget(null)
           }}
         />
       )}

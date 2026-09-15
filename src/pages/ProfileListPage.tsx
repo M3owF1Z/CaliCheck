@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from '../storage/profileStore'
 import { useNavigate } from 'react-router-dom'
 
 export default function ProfileListPage() {
-  const { profiles, loading, myProfileId, createProfile } = useProfiles()
+  const { profiles, loading, myProfileId, createProfile, refresh } = useProfiles()
   const [showCreate, setShowCreate] = useState(false)
   const navigate = useNavigate()
 
@@ -27,10 +27,18 @@ export default function ProfileListPage() {
         </button>
       </div>
 
-      {!isSupabaseConfigured && (
+      {!isSupabaseConfigured ? (
         <p className="sync-banner">
           Dane są zapisywane <strong>tylko lokalnie</strong> w tej przeglądarce. Aby współdzielić
           profile między urządzeniami, skonfiguruj Supabase — zobacz README.
+        </p>
+      ) : (
+        <p className="sync-banner">
+          <strong>Supabase połączony</strong> — profile są współdzielone na żywo między
+          urządzeniami.{' '}
+          <button className="btn btn-ghost btn-sm" onClick={() => refresh()} style={{ marginLeft: 6 }}>
+            ↻ Odśwież
+          </button>
         </p>
       )}
 
