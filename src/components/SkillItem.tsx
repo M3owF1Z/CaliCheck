@@ -6,6 +6,7 @@ interface Props {
   editable: boolean
   onChangeMeasurement?: (m: Measurement) => void
   onChangeVariation?: (variation: string) => void
+  onEdit?: () => void
   onRemove?: () => void
 }
 
@@ -14,6 +15,7 @@ export default function SkillItem({
   editable,
   onChangeMeasurement,
   onChangeVariation,
+  onEdit,
   onRemove,
 }: Props) {
   return (
@@ -28,6 +30,11 @@ export default function SkillItem({
               editable={editable}
               onChange={onChangeMeasurement}
             />
+            {editable && onEdit && (
+              <button className="icon-btn" onClick={onEdit} title="Edytuj nazwę/ikonę" aria-label="Edytuj nazwę/ikonę">
+                ✎
+              </button>
+            )}
             {editable && onRemove && (
               <button className="icon-btn" onClick={onRemove} title="Usuń skill" aria-label="Usuń skill">
                 ✕
